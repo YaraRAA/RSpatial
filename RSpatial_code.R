@@ -21,7 +21,8 @@
 library(photon)
 
 ## IMPORT .CSV FILE WITH ADDRESSES
-addresses <- read.csv('example_addresses.csv', header = T, stringsAsFactors = FALSE)
+addresses <- read.csv('example_addresses.csv', header = T, 
+                      stringsAsFactors = FALSE)
 
 ## DETERMINE LONGITUDE AND LATITUDE OF ADDRESSES
 ### below code is adopted from: https://github.com/rCarto/photon
@@ -47,7 +48,7 @@ library(sf)
 canada = st_read('gpr_000b11a_e/gpr_000b11a_e.shp')
 st_crs(canada) #check the coordinate system
 summary(canada) #look at attribute table
-unique(canada$PRFNAME) #attribute table behaves like a data frame!
+unique(canada$PRNAME) #attribute table behaves like a data frame!
 
 library(magrittr)
 plot(canada[canada$PRFNAME == 'Qu\xe9bec'] %>% st_geometry)
@@ -60,15 +61,18 @@ plot(addr.sf%>% st_geometry,col = "red", add = TRUE )
 library(raster)
 canada <- getData('GADM', country="CAN", level=2)
 summary(canada)
-table(canada$NAME_1)
+table(canada$NAME_2[canada$NAME_1 == 'Québec'])
 
 QC <- canada[canada$NAME_1 == 'Québec',]
+
+MTL <- canada[canada$NAME_2 =='Communauté-Urbaine-de-Montréal',]
 
 rm(canada)
 
 library(rgeos)
 QC <- gSimplify(QC, tol=0.01, topologyPreserve=TRUE)
 plot(QC)
+plot(MTL)
 plot(addresses, col = "red", add = TRUE)
 
 
@@ -79,11 +83,22 @@ addresses = spTransform(addresses, CRS("+init=epsg:5070"))
 library(sf)
 addr.sf = st_as_sf(addresses)
 
-## DRAW 10 KM BUFFER AROUND EACH POINT
+## DRAW 500 M BUFFER AROUND EACH POINT
 buffers = st_buffer(addr.sf, dist = 500)
+
+## PROJECT MONTREAL SHAPEFILE
+
+MTL = spTransform(MTL, CRS("+init=epsg:5070"))
+MTL.sf = st_as_sf(MTL)
 
 ## plot
 library(magrittr)
-
-plot(buffers%>% st_geometry)
+plot(MTL.sf%>% st_geometry)
+plot(buffers%>% st_geometry, add = T)
 plot(addr.sf%>% st_geometry,col = "red", add = TRUE )
+
+### OVERLAY & ADD ATTRIBUTE
+
+newshapefile1 <- over(shapefile1, shapefile2[,'column_name_shapefile2'])
+newshapefile2 <- cbind(shapefile1,newshapefile1)
+colnames(newshapefile2)<- c('column_name_shapefile1', 'column_name_shapefile2')
