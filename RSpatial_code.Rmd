@@ -1,0 +1,122 @@
+---
+title: "Introduction to Spatial Data in R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**In this workshop we will:**  
+- Import addresses and geocode them  
+- Plot addresses  
+- Create buffers around addresses  
+
+<br>
+
+**STEP 1: Set Working Directory**  
+Go to Session->Set Working Directory->Choose Directory
+or use setwd() function as below
+
+```{r }
+setwd("~/Desktop/RSpatial-master")
+```
+
+**STEP 2: Install Required Packages**  
+*if you haven't installed them already*
+
+```{r}
+# install.packages('tidygeocoder')
+# install.packages('sp')
+# install.packages("Rcpp") #required by units & sf packages
+# install.packages('units') #required by sf package
+# install.packages('sf')
+# install.packages("magrittr")
+
+```
+
+**STEP 3: Load Required Packages**
+```{r}
+library(tidygeocoder) 
+library(sp) 
+library(magrittr)
+library(sf) 
+```
+
+**STEP 4: Import .csv file with addresses**   
+*note the error message can be ignored, R thinks that there is missing data but there isn't*
+
+```{r, `echo = FALSE`}
+addresses <- read.csv('example_addresses.csv', header = T, 
+                      stringsAsFactors = FALSE)
+# look at the data
+print(addresses)
+```
+
+**STEP 5:  Determine Longitude and Latitude of Addresses**  
+and save in object named 'place'
+
+```{r}
+
+place <- geocode(addresses, address = address, method = 'arcgis', lat = latitude , long = longitude)
+```
+
+
+**STEP 6: Add Longitude and Latitude columns back to data frame'addresses'**
+```{r}
+addresses$Latitude = place$latitude
+addresses$Longitude = place$longitude
+```
+
+
+
+**STEP 7: Convert data frame 'addresses' to a shapfile and plot**
+```{r}
+# duplicate addresses
+addr.sp = addresses
+# using 'coordinates' function, define which columns contain longitude and latitude coordinates 
+coordinates(addr.sp)<-~Longitude+Latitude
+# tell R what the coordinate system these points use
+proj4string(addr.sp) = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+#plot
+plot(addr.sp, psch = 16, col = "red")
+box(col = 'black')
+```
+
+**STEP 8: Import map of Montreal & plot**  
+download from: https://donnees.montreal.ca/ville-de-montreal/polygones-arrondissements  
+
+```{r}
+
+mtl <- st_read('limadmin-shp/LIMADMIN.shp')
+plot(mtl%>% st_geometry)
+box(col = 'black')
+```
+
+**STEP 9: Plot addresses on map of Montreal**
+```{r}
+# convert address sp file to sf
+addr.sf = st_as_sf(addr.sp)
+# plot
+plot(mtl%>% st_geometry)
+plot(addr.sf %>% st_geometry, col = "red", pch = 16, add = T)
+box(col = 'black')
+```
+
+**STEP 10: Draw a 500m buffer around each address**  
+*When you need to calculate distances, you first have to transform your data:* geographic coordinate system -> projected coordinate system
+```{r}
+#ftransform
+addr.sf.pr = st_transform(addr.sf, crs = 5070)
+mtl.pr = st_transform(mtl, crs = 5070)
+
+# draw buffers around the addresses
+buffers = st_buffer(addr.sf.pr, dist = 500)
+
+#plot but subset to 2 arrondisements to zoom in in so buffers are visible
+plot(mtl.pr[mtl.pr$NOM == "Côte-des-Neiges-Notre-Dame-de-Grâce" | mtl.pr$NOM =="Ville-Marie" ,] %>% st_geometry)
+plot(buffers%>% st_geometry,col = 'blue', add = T)
+plot(addr.sf.pr%>% st_geometry,col = 'red', pch = 16, size = 1 , add = TRUE )
+box(col = 'black')
+```
+
