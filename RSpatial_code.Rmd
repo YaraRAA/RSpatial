@@ -79,7 +79,7 @@ coordinates(addr.sp)<-~Longitude+Latitude
 # tell R what the coordinate system these points use
 proj4string(addr.sp) = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 #plot
-plot(addr.sp, psch = 16, col = "red")
+plot(addr.sp, pch = 16, col = "red")
 box(col = 'black')
 ```
 
